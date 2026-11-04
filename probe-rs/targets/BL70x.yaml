@@ -20,7 +20,15 @@ variants:
     cores:
     - main
   - !Ram
+    name: OCRAM
+    range:
+      start: 0x22020000
+      end: 0x2202e000
+    cores:
+    - main
+  - !Ram
     name: WRAM
+    is_alias: true
     range:
       start: 0x42020000
       end: 0x4202e000
@@ -54,7 +62,15 @@ variants:
     cores:
     - main
   - !Ram
+    name: OCRAM
+    range:
+      start: 0x22020000
+      end: 0x2202e000
+    cores:
+    - main
+  - !Ram
     name: WRAM
+    is_alias: true
     range:
       start: 0x42020000
       end: 0x4202e000
@@ -88,7 +104,15 @@ variants:
     cores:
     - main
   - !Ram
+    name: OCRAM
+    range:
+      start: 0x22020000
+      end: 0x2202e000
+    cores:
+    - main
+  - !Ram
     name: WRAM
+    is_alias: true
     range:
       start: 0x42020000
       end: 0x4202e000
