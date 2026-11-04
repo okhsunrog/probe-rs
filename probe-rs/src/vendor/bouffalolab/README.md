@@ -14,8 +14,8 @@ HBN wake-up request (`HBN_RSV0=0x4e424845`, `HBN_RSV1=entry`) directs startup
 there before the installed flash application can initialize peripherals.
 After reconnect/halt both the PC and ROM's completed wake-up flag `0x4e424857`
 are checked. The borrowed word and retention registers are restored. DPC is
-set to the ROM entry for normal reset/resume; RAM boot replaces it with the
-ELF entry point. Entry code must initialize its own SP/GP, .bss and interrupts.
+set to the ROM entry as a placeholder; RAM boot replaces it with the ELF entry
+point. Entry code must initialize its own SP/GP, .bss and interrupts.
 
 The ELF loader only enables RISC-V RAM boot for sequences that opt in. The
 entry must be instruction-aligned, in RAM and backed by loaded data. No flash
@@ -49,6 +49,15 @@ all ELF segments verified, and all 20 KiB read back against the expected image.
 The SHA256 of the actual flash payload matched its boot header. A further 480 KiB
 read-only comparison matched the original full backup before programming.
 Application boot and board peripheral acceptance are separate from these checks.
+
+Flash boot uses `Session::prepare_running_on_flash`, also used by the CLI and
+cargo-embed. After the parked reset it writes a 16-byte reset stub at the end of
+TCM, clears the ROM wake request and resumes the stub. The stub delays briefly
+so the probe receives resumeack, then triggers a real system reset. A resume
+hook waits for reset completion and reinitializes DTM/debug access before RTT
+traffic. Simply resuming the placeholder ROM PC did not boot flash on this chip.
+`Core::reset` uses the same preparation and reconnect. This final boot intentionally
+does not preserve the stub's 16 bytes; normal startup owns RAM after reset.
 
 For a read-only check, the example compares against a supplied full flash image:
 

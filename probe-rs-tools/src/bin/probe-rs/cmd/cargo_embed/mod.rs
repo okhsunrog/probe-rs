@@ -445,14 +445,7 @@ async fn prepare_halted_image(
     flashed: bool,
 ) -> Result<()> {
     if flashed {
-        match boot_info {
-            BootInfo::FromRam { .. } => {
-                session.prepare_boot(boot_info.clone(), core_id).await?;
-            }
-            BootInfo::Other => {
-                core.reset_and_halt(Duration::from_millis(500)).await?;
-            }
-        }
+        session.prepare_boot(boot_info.clone(), core_id).await?;
     } else {
         core.reset_and_halt(Duration::from_millis(500)).await?;
     }

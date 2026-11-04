@@ -1,6 +1,12 @@
 //! BL70x debug memory access configuration.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
 
 use crate::{Error, MemoryInterface, Session};
 
@@ -12,11 +18,15 @@ use crate::architecture::riscv::{
 };
 
 #[derive(Debug)]
-pub(super) struct Bl70x;
+pub(super) struct Bl70x {
+    flash_reset_pending: AtomicBool,
+}
 
 impl Bl70x {
     pub(super) fn create() -> Arc<dyn RiscvDebugSequence> {
-        Arc::new(Self)
+        Arc::new(Self {
+            flash_reset_pending: AtomicBool::new(false),
+        })
     }
 }
 
@@ -41,6 +51,47 @@ fn configure_glb_access(config: &mut MemoryAccessConfig) {
 }
 
 impl RiscvDebugSequence for Bl70x {
+    fn on_resume(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
+        if self.flash_reset_pending.swap(false, Ordering::Relaxed) {
+            // The stub first lets resumeack reach the probe, then resets the DM.
+            // Do not issue RTT/DMI traffic until the reset and ROM boot finish.
+            std::thread::sleep(Duration::from_millis(100));
+            interface.enter_debug_mode()?;
+            configure_glb_access(interface.memory_access_config());
+        }
+        Ok(())
+    }
+
+    fn prepare_running_on_flash(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), Error> {
+        // The ROM parking/wake path has already initialized its workspace.
+        // Jumping back to the ROM entry did not boot flash. Instead resume a
+        // short RAM stub that performs a real system reset without a wake flag.
+        // Delay the reset so the probe observes resumeack before debug resets.
+        const STUB: u64 = 0x2201_fff0;
+        interface.write_32(
+            STUB,
+            &[
+                0xfff6_0613, // addi a2, a2, -1
+                0xfe06_1ee3, // bne a2, zero, -4
+                0x00b5_2023, // sw a1, 0(a0)
+                0x0000_006f, // jal zero, 0
+            ],
+        )?;
+        interface.write_word_32(0x4000_f100, 0)?;
+        interface.write_word_32(0x4000_f104, 0)?;
+        let resets = interface.read_word_32(0x4000_0018)? & !7;
+        interface.write_word_32(0x4000_0018, resets)?;
+        interface.write_csr(0x100a, 0x4000_0018)?;
+        interface.write_csr(0x100b, u64::from(resets | 6))?;
+        interface.write_csr(0x100c, 160_000)?;
+        interface.write_csr(0x7b1, STUB)?;
+        self.flash_reset_pending.store(true, Ordering::Relaxed);
+        Ok(())
+    }
+
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         configure_glb_access(interface.memory_access_config());
         Ok(())
@@ -51,6 +102,7 @@ impl RiscvDebugSequence for Bl70x {
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), Error> {
+        self.flash_reset_pending.store(false, Ordering::Relaxed);
         const PARK: u64 = 0x2201_fff0;
         const RSV0: u64 = 0x4000_f100;
         const RSV1: u64 = 0x4000_f104;
@@ -96,7 +148,7 @@ impl RiscvDebugSequence for Bl70x {
             interface.write_csr(0x7b0, dcsr | (1 << 15))?;
             let mstatus = interface.read_csr_progbuf(0x300)?;
             interface.write_csr(0x300, mstatus & !8)?;
-            // A normal reset/resume boots the ROM. RAM boot replaces this PC below.
+            // Flash boot replaces this with a reset stub; RAM boot uses its ELF entry.
             interface.write_csr(0x7b1, 0x2100_0000)?;
             Ok(())
         })();

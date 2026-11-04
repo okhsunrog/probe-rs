@@ -556,12 +556,16 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
         }
         // resume the core.
         self.resume_core()?;
+        self.sequence.on_resume(&mut self.interface)?;
         Ok(())
     }
 
     fn reset(&mut self) -> Result<(), Error> {
         self.reset_and_halt(Duration::from_secs(1))?;
+        self.sequence
+            .prepare_running_on_flash(&mut self.interface)?;
         self.resume_core()?;
+        self.sequence.on_resume(&mut self.interface)?;
         Ok(())
     }
 

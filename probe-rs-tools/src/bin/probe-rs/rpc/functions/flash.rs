@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use postcard_rpc::header::VarHeader;
 use probe_rs::{
     InstructionSet,
@@ -45,9 +43,7 @@ pub fn prepare_boot_info(
             session.prepare_running_on_ram(vector_table_addr, core_id)?;
         }
         flashing::BootInfo::Other => {
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(500))?;
+            session.prepare_running_on_flash(core_id)?;
         }
     }
 

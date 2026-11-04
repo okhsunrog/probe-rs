@@ -15,6 +15,19 @@ use crate::flashing::DebugFlashSequence;
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait RiscvDebugSequence: Send + Sync + Debug {
+    /// Re-establish debug access after resuming a sequence-specific reset stub.
+    fn on_resume(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
+    /// Called after reset-and-halt, before resuming the normal flash boot path.
+    fn prepare_running_on_flash(
+        &self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
     /// Whether ELF entry points in RAM can be booted by this sequence.
     fn supports_ram_boot(&self) -> bool {
         false

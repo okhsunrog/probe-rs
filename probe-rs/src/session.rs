@@ -862,6 +862,16 @@ impl Session {
         Ok(())
     }
 
+    /// Reset and halt before resuming the target's normal flash boot path.
+    pub fn prepare_running_on_flash(&mut self, core_id: usize) -> Result<(), crate::Error> {
+        self.core(core_id)?
+            .reset_and_halt(Duration::from_millis(500))?;
+        if let DebugSequence::Riscv(sequence) = self.target.debug_sequence.clone() {
+            sequence.prepare_running_on_flash(&mut self.get_riscv_interface(core_id)?)?;
+        }
+        Ok(())
+    }
+
     /// This function can be used to set up an application which was flashed to RAM.
     pub fn prepare_running_on_ram(
         &mut self,
