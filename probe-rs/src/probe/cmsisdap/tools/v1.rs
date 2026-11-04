@@ -121,6 +121,7 @@ pub(super) fn open_device(
                 device_info.vendor_id(),
                 device_info.product_id(),
                 device_info.release_number(),
+                Some(&s),
             )?;
             let report_size = descriptor_report_size(&device)
                 .map_or_else(|| hid_report_size(device_info), usize::from);

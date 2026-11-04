@@ -303,6 +303,7 @@ pub fn open_v2_device(
                         device_info.vendor_id(),
                         device_info.product_id(),
                         device_info.device_version(),
+                        device_info.product_string(),
                     )?;
 
                     // Claim the bulk endpoints once and keep them for the
@@ -357,7 +358,13 @@ fn reject_probe_by_version(
     vendor_id: u16,
     product_id: u16,
     device_version: u16,
+    product: Option<&str>,
 ) -> Result<(), ProbeCreationError> {
+    // JTAGprobe reuses the Raspberry Pi VID/PID and reports USB version 2.0.0,
+    // but is a separate CMSIS-DAP implementation, not an old debugprobe release.
+    if product == Some("JTAG probe on Pico (CMSIS-DAP)") {
+        return Ok(());
+    }
     let denylist = [
         |vid, pid, version| (vid == 0x2e8a && pid == 0x000c && version < 0x0220).then_some("2.2.0"), // Old RPi debugprobe
     ];
@@ -492,7 +499,24 @@ pub(super) fn loses_pipelined_replies(product: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::loses_pipelined_replies;
+    use super::{loses_pipelined_replies, reject_probe_by_version};
+
+    #[test]
+    fn jtagprobe_is_not_an_outdated_raspberry_pi_debugprobe() {
+        assert!(
+            reject_probe_by_version(
+                0x2e8a,
+                0x000c,
+                0x0200,
+                Some("JTAG probe on Pico (CMSIS-DAP)")
+            )
+            .is_ok()
+        );
+        for product in [None, Some("Debugprobe on Pico (CMSIS-DAP)")] {
+            assert!(reject_probe_by_version(0x2e8a, 0x000c, 0x0200, product).is_err());
+            assert!(reject_probe_by_version(0x2e8a, 0x000c, 0x0220, product).is_ok());
+        }
+    }
 
     #[test]
     fn old_xds110_firmware_loses_pipelined_replies() {
