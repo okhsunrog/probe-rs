@@ -1,5 +1,3 @@
-# Debug support only; no flash algorithm.
-# Memory ranges: BouffaloSDK drivers/lhal/config/bl702/bl702_memorymap.h.
 name: BL702/BL704/BL706
 variants:
 - name: BL702
@@ -8,9 +6,6 @@ variants:
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-  jtag:
-    scan_chain:
-    - ir_len: 5
   memory_map:
   - !Ram
     name: TCM
@@ -26,14 +21,6 @@ variants:
       end: 0x2202e000
     cores:
     - main
-  - !Ram
-    name: WRAM
-    is_alias: true
-    range:
-      start: 0x42020000
-      end: 0x4202e000
-    cores:
-    - main
   - !Generic
     name: FLASH_XIP
     range:
@@ -44,15 +31,23 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: WRAM
+    range:
+      start: 0x42020000
+      end: 0x4202e000
+    cores:
+    - main
+    is_alias: true
+  jtag:
+    scan_chain:
+    - ir_len: 5
 - name: BL704
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-  jtag:
-    scan_chain:
-    - ir_len: 5
   memory_map:
   - !Ram
     name: TCM
@@ -68,14 +63,6 @@ variants:
       end: 0x2202e000
     cores:
     - main
-  - !Ram
-    name: WRAM
-    is_alias: true
-    range:
-      start: 0x42020000
-      end: 0x4202e000
-    cores:
-    - main
   - !Generic
     name: FLASH_XIP
     range:
@@ -86,15 +73,23 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: WRAM
+    range:
+      start: 0x42020000
+      end: 0x4202e000
+    cores:
+    - main
+    is_alias: true
+  jtag:
+    scan_chain:
+    - ir_len: 5
 - name: BL706
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-  jtag:
-    scan_chain:
-    - ir_len: 5
   memory_map:
   - !Ram
     name: TCM
@@ -110,21 +105,52 @@ variants:
       end: 0x2202e000
     cores:
     - main
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x23000000
+      end: 0x23100000
+    cores:
+    - main
+    access:
+      boot: true
   - !Ram
     name: WRAM
-    is_alias: true
     range:
       start: 0x42020000
       end: 0x4202e000
     cores:
     - main
-  - !Generic
-    name: FLASH_XIP
-    range:
+    is_alias: true
+  flash_algorithms:
+  - bl706-mxic-1m
+  jtag:
+    scan_chain:
+    - ir_len: 5
+flash_algorithms:
+- name: bl706-mxic-1m
+  description: BL706 Macronix 1 MiB SPI flash
+  default: true
+  instructions: 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
+  load_address: 0x22010010
+  pc_init: 0x78
+  pc_uninit: 0x304
+  pc_program_page: 0x1aa
+  pc_erase_sector: 0x0
+  pc_read: 0x260
+  vendor_functions:
+    JedecId: 0x308
+  data_section_offset: 0xb34
+  flash_properties:
+    address_range:
       start: 0x23000000
-      end: 0x24000000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
+      end: 0x23100000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

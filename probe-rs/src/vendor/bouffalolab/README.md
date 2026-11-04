@@ -35,3 +35,23 @@ Hardware validation: standalone Grapple Probe Pico, Pinecil V2 BL706, 1 MHz
 TCK; 20 consecutive reset/load/RTT cycles each produced a fresh startup and
 timer ticks from zero, without USB reconnection or pressing a target button.
 BL702/BL704 share this sequence but have not been separately tested.
+
+## BL706 embedded flash
+
+BL706 has a 1 MiB NVM region backed by the standalone
+[flash algorithm](flash-algorithm/README.md). It requires package/flash shadow
+eFuses for BL706 embedded 1 MiB and JEDEC `C2 20 14`. BL702/BL704 remain debug-only.
+The flash algorithm establishes its own embedded pad routing, including after a
+POR reset, and reads physical offsets independently of the previous XIP offset.
+
+Hardware validation on the same Pinecil V2: five 4 KiB sectors erased/programmed,
+all ELF segments verified, and all 20 KiB read back against the expected image.
+The SHA256 of the actual flash payload matched its boot header. A further 480 KiB
+read-only comparison matched the original full backup before programming.
+Application boot and board peripheral acceptance are separate from these checks.
+
+For a read-only check, the example compares against a supplied full flash image:
+
+```sh
+cargo run --release -p probe-rs --example bl706_flash_read -- reference-1m.bin
+```

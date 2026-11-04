@@ -1,0 +1,16 @@
+[package]
+name = "bl706-flash"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace]
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+debug = true
+
+[dependencies]

@@ -63,7 +63,17 @@ mod tests {
                 .get_target_by_name(name)
                 .unwrap();
             assert_eq!(target.cores.len(), 1);
-            assert!(target.flash_algorithms.is_empty());
+            if expected == "BL706" {
+                assert_eq!(target.flash_algorithms.len(), 1);
+                let raw = &target.flash_algorithms[0];
+                assert_eq!(raw.flash_properties.address_range, 0x2300_0000..0x2310_0000);
+                assert!(raw.pc_read.is_some());
+                assert!(raw.pc_erase_all.is_none());
+                crate::flashing::FlashAlgorithm::assemble_from_raw_with_core(raw, "main", &target)
+                    .unwrap();
+            } else {
+                assert!(target.flash_algorithms.is_empty());
+            }
         }
         assert_eq!(chip_from_package(u32::MAX), None);
     }
