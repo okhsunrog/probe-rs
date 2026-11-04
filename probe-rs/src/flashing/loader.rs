@@ -441,7 +441,8 @@ mod builtin {
             }
 
             // get the vector_table_addr, it will be used to prepare boot.
-            // RAM boot is only implemented for ARM.
+            // ARM images boot from a vector table; supported RISC-V images use
+            // their ELF entry point instead.
             if session.target().architecture() == probe_rs_target::Architecture::Arm
                 && let Some(address) = crate::flashing::vector_table::find_in_elf(
                     &elf_buffer,
@@ -449,6 +450,14 @@ mod builtin {
                 )
             {
                 flash_loader.set_vector_table_addr(address);
+            }
+
+            if let crate::config::DebugSequence::Riscv(sequence) = &session.target().debug_sequence
+                && sequence.supports_ram_boot()
+            {
+                use object::Object;
+                let entry = object::File::parse(elf_buffer.as_slice())?.entry();
+                flash_loader.set_riscv_ram_boot_entry(entry)?;
             }
 
             Ok(())
@@ -727,6 +736,21 @@ impl FlashLoader {
     /// Set the vector table address.
     pub fn set_vector_table_addr(&mut self, vector_table_addr: u64) {
         self.vector_table_addr = Some(vector_table_addr);
+    }
+
+    fn set_riscv_ram_boot_entry(&mut self, entry: u64) -> Result<(), FileDownloadError> {
+        if matches!(
+            Self::get_region_for_address(&self.memory_map, entry),
+            Some(MemoryRegion::Ram(_))
+        ) {
+            if entry & 1 != 0 || !self.has_data_for_address(entry) {
+                return Err(FileDownloadError::Object(
+                    "RISC-V RAM entry must be aligned and covered by loaded data",
+                ));
+            }
+            self.set_vector_table_addr(entry);
+        }
+        Ok(())
     }
 
     /// Retrieve available boot information
@@ -1364,5 +1388,45 @@ impl FlashLoader {
             .data
             .iter()
             .map(|(address, data)| (*address, data.as_slice()))
+    }
+}
+
+#[cfg(all(test, feature = "builtin-targets"))]
+mod ram_entry_tests {
+    use super::*;
+
+    fn loader() -> FlashLoader {
+        let target = crate::config::Registry::from_builtin_families()
+            .get_target_by_name("BL706")
+            .unwrap();
+        let mut loader = FlashLoader::new(target.memory_map, TargetDescriptionSource::BuiltIn);
+        loader
+            .add_data(0x2201_0000, &[0x01, 0x00, 0x01, 0x00])
+            .unwrap();
+        loader
+    }
+
+    #[test]
+    fn riscv_ram_entry_must_be_backed_by_loaded_instructions() {
+        let mut loader = loader();
+        for entry in [0x2201_0001, 0x2201_1000] {
+            assert!(loader.set_riscv_ram_boot_entry(entry).is_err());
+            assert!(matches!(loader.boot_info(), BootInfo::Other));
+        }
+        loader.set_riscv_ram_boot_entry(0x2201_0002).unwrap();
+        assert!(matches!(
+            loader.boot_info(),
+            BootInfo::FromRam {
+                vector_table_addr: 0x2201_0002,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn flash_entry_is_not_treated_as_ram_boot() {
+        let mut loader = loader();
+        loader.set_riscv_ram_boot_entry(0x2300_0000).unwrap();
+        assert!(matches!(loader.boot_info(), BootInfo::Other));
     }
 }

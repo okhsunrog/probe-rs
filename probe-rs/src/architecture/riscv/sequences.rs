@@ -15,6 +15,11 @@ use crate::flashing::DebugFlashSequence;
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait RiscvDebugSequence: Send + Sync + Debug {
+    /// Whether ELF entry points in RAM can be booted by this sequence.
+    fn supports_ram_boot(&self) -> bool {
+        false
+    }
+
     /// Executed when the probe establishes a connection to the target.
     fn on_connect(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         Ok(())
