@@ -9,13 +9,16 @@ use crate::{
     vendor::Vendor,
 };
 
+mod sequences;
+
 /// Bouffalo Lab.
 #[derive(docsplay::Display)]
 pub struct BouffaloLab;
 
 impl Vendor for BouffaloLab {
-    fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
-        None
+    fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
+        matches!(chip.name.as_str(), "BL702" | "BL704" | "BL706")
+            .then(|| DebugSequence::Riscv(sequences::Bl70x::create()))
     }
 
     fn try_detect_riscv_chip(
