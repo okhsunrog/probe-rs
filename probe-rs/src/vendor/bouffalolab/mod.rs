@@ -1,0 +1,67 @@
+//! Bouffalo Lab vendor support.
+
+use probe_rs_target::Chip;
+
+use crate::{
+    Error, MemoryInterface,
+    architecture::riscv::communication_interface::RiscvCommunicationInterface,
+    config::{DebugSequence, Registry},
+    vendor::Vendor,
+};
+
+/// Bouffalo Lab.
+#[derive(docsplay::Display)]
+pub struct BouffaloLab;
+
+impl Vendor for BouffaloLab {
+    fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
+        None
+    }
+
+    fn try_detect_riscv_chip(
+        &self,
+        _registry: &Registry,
+        probe: &mut RiscvCommunicationInterface,
+        idcode: u32,
+    ) -> Result<Option<String>, Error> {
+        // BL702, BL704 and BL706 share their TAP ID; package information
+        // distinguishes them. Do not access this register on other devices.
+        if idcode != 0x2000_0e05 {
+            return Ok(None);
+        }
+
+        // EF_DATA_0_EF_KEY_SLOT_5_W2, pkg_info[31:30]. Read the shadow
+        // register only; do not reload or program eFuses during detection.
+        // Vendor SDK: bl702_ef_ctrl.h / EF_Ctrl_Read_Device_Info().
+        let device_info = probe.read_word_32(0x4000_7074)?;
+        Ok(chip_from_package(device_info).map(str::to_owned))
+    }
+}
+
+fn chip_from_package(device_info: u32) -> Option<&'static str> {
+    match device_info >> 30 {
+        0 => Some("BL702"), // QFN32
+        1 => Some("BL704"), // QFN40
+        2 => Some("BL706"), // QFN48
+        _ => None,          // Reserved
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_packages_without_using_flash_configuration_bits() {
+        for (package, expected) in [(0, "BL702"), (1, "BL704"), (2, "BL706")] {
+            let name = chip_from_package((package << 30) | 0x3fff_ffff).unwrap();
+            assert_eq!(name, expected);
+            let target = Registry::from_builtin_families()
+                .get_target_by_name(name)
+                .unwrap();
+            assert_eq!(target.cores.len(), 1);
+            assert!(target.flash_algorithms.is_empty());
+        }
+        assert_eq!(chip_from_package(u32::MAX), None);
+    }
+}

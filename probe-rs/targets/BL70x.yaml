@@ -1,0 +1,106 @@
+# Debug support only; no flash algorithm.
+# Memory ranges: BouffaloSDK drivers/lhal/config/bl702/bl702_memorymap.h.
+name: BL702/BL704/BL706
+variants:
+- name: BL702
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  jtag:
+    scan_chain:
+    - ir_len: 5
+  memory_map:
+  - !Ram
+    name: TCM
+    range:
+      start: 0x22010000
+      end: 0x22020000
+    cores:
+    - main
+  - !Ram
+    name: WRAM
+    range:
+      start: 0x42020000
+      end: 0x4202e000
+    cores:
+    - main
+  - !Generic
+    name: FLASH_XIP
+    range:
+      start: 0x23000000
+      end: 0x24000000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+- name: BL704
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  jtag:
+    scan_chain:
+    - ir_len: 5
+  memory_map:
+  - !Ram
+    name: TCM
+    range:
+      start: 0x22010000
+      end: 0x22020000
+    cores:
+    - main
+  - !Ram
+    name: WRAM
+    range:
+      start: 0x42020000
+      end: 0x4202e000
+    cores:
+    - main
+  - !Generic
+    name: FLASH_XIP
+    range:
+      start: 0x23000000
+      end: 0x24000000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+- name: BL706
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  jtag:
+    scan_chain:
+    - ir_len: 5
+  memory_map:
+  - !Ram
+    name: TCM
+    range:
+      start: 0x22010000
+      end: 0x22020000
+    cores:
+    - main
+  - !Ram
+    name: WRAM
+    range:
+      start: 0x42020000
+      end: 0x4202e000
+    cores:
+    - main
+  - !Generic
+    name: FLASH_XIP
+    range:
+      start: 0x23000000
+      end: 0x24000000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true

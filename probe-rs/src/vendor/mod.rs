@@ -23,6 +23,7 @@ use crate::{
 
 pub mod amd;
 pub mod asrmicro;
+pub mod bouffalolab;
 pub mod gigadevice;
 pub mod holtek;
 pub mod infineon;
@@ -92,6 +93,7 @@ static VENDORS: LazyLock<RecursiveRwLock<Vec<&'static dyn Vendor>>> = LazyLock::
     let vendors: Vec<&'static dyn Vendor> = vec![
         &asrmicro::Asrmicro,
         &amd::Amd,
+        &bouffalolab::BouffaloLab,
         &microchip::Microchip,
         &infineon::Infineon,
         &maxim::Maxim,
