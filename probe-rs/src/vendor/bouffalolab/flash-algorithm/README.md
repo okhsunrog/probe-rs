@@ -6,7 +6,10 @@ Other IDs or external flash pad configurations are rejected. No chip erase,
 eFuse, protection unlock, or nonvolatile status-register writes are implemented.
 
 `Init` selects an 8 MHz SPI clock after the BL70x RC32M debug reset, routes SF2
-to the embedded pads, and recovers from continuous-read/reset/power-down modes.
+to the embedded pads, restores GPIO24's original-pad input enable for MISO,
+and recovers from continuous-read/reset/power-down modes. It preserves the
+GPIO mux, output value/enable and neighbouring GPIO25 settings. Clearing this
+input gate in firmware returns a zero JEDEC ID even after a debug reset.
 `ReadFlash` uses physical flash offsets independent of the previous XIP mapping.
 `UnInit` leaves XIP disabled; a system reset boots the ROM and restores XIP.
 Callers must not resume a saved flash PC after taking controller ownership.

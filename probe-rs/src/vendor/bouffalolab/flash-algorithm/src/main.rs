@@ -180,6 +180,12 @@ pub extern "C" fn Init(_address: u32, _clock: u32, _operation: u32) -> u32 {
         return 7;
     }
     modify(0x4000_0088, 0x3f, 0x3f);
+    // GPIO24 is SF2 DATA1/MISO. Its original-pad input gate also controls
+    // reads from embedded flash, even when the logical GPIO uses an SF/PSRAM
+    // pad. Firmware that clears IE before selecting those pads can leave
+    // JEDEC reads stuck at zero across a debug reset. Restore only IE;
+    // preserve GPIO24's mux/electrical settings and neighbouring GPIO25.
+    modify(0x4000_0130, 1, 1);
     modify(CTRL + 0x70, 3 | (1 << 30), 1);
     modify(CTRL, (1 << 3) | (1 << 5), 1 << 3);
     // Four FF bytes also terminate a pending continuous-read transaction.
